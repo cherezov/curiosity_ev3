@@ -1,13 +1,13 @@
 # legowrt
-This all is made for my son, who always asks me to make possible wireless control his Lego Mindstorm EV3 robot from PC.
+This project was made for my son, who asked me to make possible wireless control his Lego Mindstorm EV3 robot from PC.
 Below is the log of what was done, what is needed to be done and several notes and instructions.
 
-## Requirements :octocat:
+## Requirements from my boy :octocat:
 * Robot shall has a camera eye and image shall be visible on laptop
 * Robot shall be controlled via joystick connected to laptop
 * Notebook and robot shall communicate wirelessly (e.g via wifi)
 
-## Hardware
+## Hardware we will work with
 * WiFi router and PC or laptop (my with CentOS 7)
 * [Lego Mindstorms](https://www.lego.com/mindstorms/)
 * Micro SDHC card with [ev3dev image](http://www.ev3dev.org/docs/getting-started/)
@@ -17,7 +17,7 @@ Below is the log of what was done, what is needed to be done and several notes a
 * USB hub
 * USB-miniUSB cord
 
-## Plan and progress
+## Plan and progress and thoughts
 - [x] Setup OpenWRT to [TP-Link TL-MR3020](https://wiki.openwrt.org/toh/tp-link/tl-mr3020)
 - [x] Setup [ev3dev](http://www.ev3dev.org/docs/getting-started/) for Lego EV3 Brick
 - [ ] ~Connect Lego EV3 Brick to wifi network~ **Note:** this requires WiFi dongle and will occupy single USB port
@@ -47,7 +47,7 @@ EV3 brick part is described [here](http://www.ev3dev.org/docs/tutorials/connecti
 ### Port forwarding from MR3020 to EV3
 Port forwarding is described in ```/etc/config/rinetd``` 
 
-TODO: add example here
+**TODO:** add example here
 
 Restart **rinetd**
 ```

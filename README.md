@@ -27,7 +27,7 @@ Below is the log of what was done, what is needed to be done and several notes a
 - [ ] Connect joystick to notebook
 - [ ] Find out a way to code joystick (may by pygame?)
 - [ ] Develop python3 listenening server for EV3 Brick
-- [ ] Code client side application
+- [ ] Code client side application [check this](http://stackoverflow.com/questions/27676637/stream-video-in-python-use-pygame-lib)
 - [ ] Add auto configuration usb0 interface on MR3020 board [configure DHCP?](http://en.qi-hardware.com/wiki/Ethernet_over_USB#Editing-the-Host's-Network-Configuration)
 
 

@@ -1,6 +1,6 @@
 # legowrt
-Well this all is made for my son, who always ask me to make possible wireless control his Lego Mindstorm EV3 robot from PC.
-Here is the log of what was done and what is needed to be done
+This all is made for my son, who always asks me to make possible wireless control his Lego Mindstorm EV3 robot from PC.
+Below is the log of what was done, what is needed to be done and several notes and instructions.
 
 ## Requirements
 * Robot shall has a camera eye and image shall be visible on notebook
@@ -41,7 +41,7 @@ This simply requires additional package to install on MR3020 board
 ```
 
 ### Port forwarding from MR3020 to EV3
-Port forwarding is described in ```/etc/config/rinetd```
+Port forwarding is described in ```/etc/config/rinetd``` 
 TODO: add example here
 
 Restart **rinetd**

@@ -20,8 +20,8 @@ Here is the log of what was done and what is needed to be done
 - [x] Setup OpenWRT to [TP-Link TL-MR3020](https://wiki.openwrt.org/toh/tp-link/tl-mr3020)
 - [x] Setup [ev3dev](http://www.ev3dev.org/docs/getting-started/) for Lego EV3 Brick
 - [ ] ~Connect Lego EV3 Brick to wifi network~ **Note:** this requires WiFi dongle and will occupy single USB port
-- [x] Connect MR3020 board to EV3 Brick with ethernet over USB
-- [x] Setup port forwarding from MR3020 to EV3 Brick
+- [x] Connect MR3020 board to EV3 Brick with [ethernet over USB](#ethernet-over-usb)
+- [x] Setup [port forwarding from MR3020 to EV3](#Port-forwarding-from-MR3020-to-EV3) Brick
 - [x] Run python listening server on EV3 Brick and teset connection from laptop 
 - [ ] Make same test with WebCamera and EV3 Brick connected to MR3020 board via USB hab
 - [ ] Connect joystick to notebook
@@ -29,6 +29,28 @@ Here is the log of what was done and what is needed to be done
 - [ ] Develop python3 listenening server for EV3 Brick
 - [ ] Code client side application
 - [ ] Add auto configuration usb0 interface on MR3020 board
+
+
+## Configuration notes
+### Ethernet over USB
+This simply requires additional package to install on MR3020 board
+```shell
+> opkg update
+> opkg install kmod-usb-net-cdc-ether
+> reboot
+```
+
+### Port forwarding from MR3020 to EV3
+Port forwarding is described in ```/etc/config/rinetd```
+TODO: add example here
+
+Restart **rinetd**
+```
+> /etc/rc.init/rinetd restart
+```
+
+
+
 
 
 

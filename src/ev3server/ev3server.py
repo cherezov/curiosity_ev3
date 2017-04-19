@@ -4,6 +4,11 @@
 import socket
 import select
 
+try:
+   import ev3dev.ev3 as ev3
+except:
+   print('Error: ev3dev module not found!')
+
 class EV3Server:
    def __init__(self, port, quite):
       self.host = socket.gethostbyname(socket.getfqdn())
@@ -36,6 +41,7 @@ class EV3Server:
    def handle(self, cmd, value):
       if cmd == 'speak':
          self.__log('* Speaking "{}"'.format(value))
+         ev3.Sound.speak(value).wait()
       elif cmd == 'motorA':
          self.__log('* motorA={}'.format(value))
       elif cmd == 'motorB':
@@ -65,7 +71,10 @@ class EV3Server:
 
                if ':' in data:
                   cmd, value = data.split(':')
-                  self.handle(cmd.strip(), value.strip())
+                  try:
+                     self.handle(cmd.strip(), value.strip())
+                  except Exception as e:
+                     print('Handle exception: {}'.format(e))
             elif self.__peer_sock in w:
                self.reply()
             

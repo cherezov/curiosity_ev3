@@ -2,12 +2,13 @@
 This all is made for my son, who always asks me to make possible wireless control his Lego Mindstorm EV3 robot from PC.
 Below is the log of what was done, what is needed to be done and several notes and instructions.
 
-## Requirements
-* Robot shall has a camera eye and image shall be visible on notebook
-* Robot shall be controlled via joystick connected to notebook
+## Requirements :octocat:
+* Robot shall has a camera eye and image shall be visible on laptop
+* Robot shall be controlled via joystick connected to laptop
 * Notebook and robot shall communicate wirelessly (e.g via wifi)
 
 ## Hardware
+* WiFi router and PC or laptop (my with CentOS 7)
 * [Lego Mindstorms](https://www.lego.com/mindstorms/)
 * Micro SDHC card with [ev3dev image](http://www.ev3dev.org/docs/getting-started/)
 * [TP-Link TL-MR3020 router with OpenWRT onboard](https://wiki.openwrt.org/toh/tp-link/tl-mr3020)
@@ -24,7 +25,7 @@ Below is the log of what was done, what is needed to be done and several notes a
 - [x] Setup [port forwarding from MR3020 to EV3](#Port-forwarding-from-MR3020-to-EV3) Brick
 - [x] Run python listening server on EV3 Brick and teset connection from laptop 
 - [ ] Make same test with WebCamera and EV3 Brick connected to MR3020 board via USB hab
-- [ ] Connect joystick to notebook
+- [ ] Connect joystick to laptop
 - [ ] Find out a way to code joystick (may by pygame?)
 - [ ] Develop python3 listenening server for EV3 Brick
 - [ ] Code client side application [check this](http://stackoverflow.com/questions/27676637/stream-video-in-python-use-pygame-lib)

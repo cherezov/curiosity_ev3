@@ -51,7 +51,7 @@ TODO: add example here
 
 Restart **rinetd**
 ```
-> /etc/rc.init/rinetd restart
+> /etc/init.d/rinetd restart
 ```
 
 

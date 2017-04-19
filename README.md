@@ -20,7 +20,7 @@ Below is the log of what was done, what is needed to be done and several notes a
 - [x] Setup OpenWRT to [TP-Link TL-MR3020](https://wiki.openwrt.org/toh/tp-link/tl-mr3020)
 - [x] Setup [ev3dev](http://www.ev3dev.org/docs/getting-started/) for Lego EV3 Brick
 - [ ] ~Connect Lego EV3 Brick to wifi network~ **Note:** this requires WiFi dongle and will occupy single USB port
-- [x] Connect MR3020 board to EV3 Brick with [ethernet over USB](#ethernet-over-usb)
+- [x] Connect MR3020 board to EV3 Brick with [USB reverse tethering](#USB-reverse-tethering)
 - [x] Setup [port forwarding from MR3020 to EV3](#Port-forwarding-from-MR3020-to-EV3) Brick
 - [x] Run python listening server on EV3 Brick and teset connection from laptop 
 - [ ] Make same test with WebCamera and EV3 Brick connected to MR3020 board via USB hab
@@ -28,18 +28,18 @@ Below is the log of what was done, what is needed to be done and several notes a
 - [ ] Find out a way to code joystick (may by pygame?)
 - [ ] Develop python3 listenening server for EV3 Brick
 - [ ] Code client side application
-- [ ] Add auto configuration usb0 interface on MR3020 board
+- [ ] Add auto configuration usb0 interface on MR3020 board [configure DHCP?](http://en.qi-hardware.com/wiki/Ethernet_over_USB#Editing-the-Host's-Network-Configuration)
 
 
 ## Configuration notes
-### Ethernet over USB
+### USB reverse tethering
 This simply requires additional package to install on MR3020 board
 ```shell
 > opkg update
 > opkg install kmod-usb-net-cdc-ether
 > reboot
 ```
-More reading about [OpenWRT usb tethering](https://wiki.openwrt.org/doc/howto/usb.tethering)
+More reading about [OpenWRT usb reverse tethering](https://wiki.openwrt.org/doc/howto/usb.reverse.tethering)
 
 EV3 brick part is described [here](http://www.ev3dev.org/docs/tutorials/connecting-to-the-internet-via-usb/)
 

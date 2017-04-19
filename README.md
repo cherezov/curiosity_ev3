@@ -2,7 +2,8 @@
 This project was made for my son, who asked me to make possible wireless control his Lego Mindstorm EV3 robot from PC.
 Below is the log of what was done, what is needed to be done and several notes and instructions.
 
-![alt tag](images/legowrt.jpg)
+## General idea
+![legowrt idea](images/legowrt.jpg)
 
 ## Requirements from my boy :octocat:
 * Robot shall has a camera eye and image shall be visible on laptop

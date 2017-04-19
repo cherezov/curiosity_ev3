@@ -40,11 +40,13 @@ This simply requires additional package to install on MR3020 board
 > reboot
 ```
 More reading about [OpenWRT usb tethering](https://wiki.openwrt.org/doc/howto/usb.tethering)
+
 EV3 brick part is described [here](http://www.ev3dev.org/docs/tutorials/connecting-to-the-internet-via-usb/)
 
 
 ### Port forwarding from MR3020 to EV3
 Port forwarding is described in ```/etc/config/rinetd``` 
+
 TODO: add example here
 
 Restart **rinetd**

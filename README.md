@@ -31,7 +31,6 @@ Below is the log of what was done, what is needed to be done and several notes a
 - [ ] Code client side application [check this](http://stackoverflow.com/questions/27676637/stream-video-in-python-use-pygame-lib)
 - [ ] Add auto configuration usb0 interface on MR3020 board [configure DHCP?](http://en.qi-hardware.com/wiki/Ethernet_over_USB#Editing-the-Host's-Network-Configuration)
 
-
 ## Configuration notes
 ### USB reverse tethering
 This simply requires additional package to install on MR3020 board

@@ -10,25 +10,29 @@ import socket
 GATE_IP = "192.168.1.120"
 GATE_PORT= 88
 FRAME_PORT = 8080
+IMG_FOLDER = '../../images/'
+CAMERA_URL_FORMAT = 'http://{}:{}/?action=snapshot'
+FRAME_SIZE = (640, 480)
+SCREEN_SIZE = (1000, 600)
 
 def getFrame(ip, port):
    try:
-      frame_url = 'http://{}:{}/?action=snapshot'.format(ip, port)
+      frame_url = CAMERA_URL_FORMAT.format(ip, port)
       image_str = urlopen(frame_url).read()
       image_file = io.BytesIO(image_str)
 
       frame = pygame.image.load(image_file)
    except:
-      frame = pygame.image.load("../../images/noise.jpg")
-      frame = pygame.transform.scale(frame, (640, 480))
+      frame = pygame.image.load(os.path.join(IMG_FOLDER, 'noise.jpg'))
+      frame = pygame.transform.scale(frame, FRAME_SIZE)
    return frame
 
 def initScreen():
    pygame.init()
-   screen = pygame.display.set_mode((1000,600))
+   screen = pygame.display.set_mode(SCREEN_SIZE)
    pygame.display.set_caption('Robot controller')
 
-   bg = pygame.image.load("../../images/bkgnd/tunnel.jpg")
+   bg = pygame.image.load(os.path.join(IMG_FOLDER, 'tunnel.jpg'))
    screen.blit(bg, (0, 0))
    return screen
 
@@ -82,11 +86,11 @@ if __name__ == '__main__':
 
    joystick = initJoiystick()
    jsBtn = pygame.Color('green') if joystick is not None else pygame.Color('red')
-   pygame.draw.rect(screen, jsBtn, (750,120,100,50))
+   pygame.draw.rect(screen, jsBtn, (750, 120, 100, 50))
 
    brickSock = connectToBrick(GATE_IP, GATE_PORT)
    brickBtn = pygame.Color('green') if brickSock is not None else pygame.Color('red')
-   pygame.draw.rect(screen, brickBtn, (750,220,100,50))
+   pygame.draw.rect(screen, brickBtn, (750, 220, 100, 50))
 
    while True:
       frame = getFrame(GATE_IP, FRAME_PORT)

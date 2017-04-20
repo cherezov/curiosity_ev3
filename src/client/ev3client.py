@@ -2,109 +2,201 @@
 # @author Pavel Cherezov (cherezov.pavel@gmail.com)
 
 import io
-import socket,sys
+import os
+import sys
 import pygame
-from urllib.request import urlopen
 import socket
+import threading
+import queue
+from urllib.request import urlopen
 
-GATE_IP = "192.168.1.120"
-GATE_PORT= 88
-FRAME_PORT = 8080
+__version__ = '0.1'
+
+GATE_IP = "192.168.1.120" # ip address of MR3020 board
+GATE_PORT= 88             # port number on MR3020 board which redirects to lego
+FRAME_PORT = 8080         # webcamera port on MR3020
+FRAME_SIZE = (640, 480)   # must be synced with web camera settings
+SCREEN_SIZE = (1000, 650)
+FRAME_POS = (25, 80)
 IMG_FOLDER = '../../images/'
 CAMERA_URL_FORMAT = 'http://{}:{}/?action=snapshot'
-FRAME_SIZE = (640, 480)
-SCREEN_SIZE = (1000, 600)
 
-def getFrame(ip, port):
-   try:
-      frame_url = CAMERA_URL_FORMAT.format(ip, port)
-      image_str = urlopen(frame_url).read()
-      image_file = io.BytesIO(image_str)
+class WebFrame:
+   def __init__(self, ip, port):
+      self.ip = ip
+      self.port = port
 
-      frame = pygame.image.load(image_file)
-   except:
-      frame = pygame.image.load(os.path.join(IMG_FOLDER, 'noise.jpg'))
-      frame = pygame.transform.scale(frame, FRAME_SIZE)
-   return frame
+      self.__frame = pygame.image.load(os.path.join(IMG_FOLDER, 'noise.jpg'))
+      self.__frame = pygame.transform.scale(self.__frame, FRAME_SIZE)
 
-def initScreen():
-   pygame.init()
-   screen = pygame.display.set_mode(SCREEN_SIZE)
-   pygame.display.set_caption('Robot controller')
+      self.started = True
+      self.__thread = threading.Thread(target=self.frameLoop)
+      self.__thread.start()
 
-   bg = pygame.image.load(os.path.join(IMG_FOLDER, 'tunnel.jpg'))
-   screen.blit(bg, (0, 0))
-   return screen
+   def getFrame(self):
+      try:
+         frame_url = CAMERA_URL_FORMAT.format(self.ip, self.port)
+         image_str = urlopen(frame_url).read()
+         image_file = io.BytesIO(image_str)
+         frame = pygame.image.load(image_file)
+      except:
+         # Show noise in case of errors
+         frame = pygame.image.load(os.path.join(IMG_FOLDER, 'noise.jpg'))
+         frame = pygame.transform.scale(frame, FRAME_SIZE)
+      return frame
 
-def initJoiystick():
-   pygame.joystick.init()
-   if pygame.joystick.get_count() == 0:
-      return None
+   def frameLoop(self):
+      while self.started:
+         self.__frame = self.getFrame()
 
-   joystickId = 0
-   joystick = pygame.joystick.Joystick(joystickId)
-   joystick.init()
-   return joystick
+   def getFrame(self):
+      return self.__frame
 
-def connectToBrick(ip, port):
-   try:
-      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      s.connect((ip, port))
-      return s
-   except:
-      return None
+   def stop(self):
+      self.started = False
+      self.__thread.join()
 
-prev_x = 0
-prev_y = 0
+class Cmd:
+   def __init__(self, cmd, value):
+      self.cmd = cmd
+      self.value = value
 
-def handleJoystick():
-   if joystick is None:
-      return ''
-   global prev_x, prev_y
-   dataToSend = ''
-   axes = joystick.get_numaxes()
+class CmdSender:
+   def __init__(self, ip, port):
+      self.ip = ip
+      self.port = port
+      self.__queue = queue.Queue()
+      self.__socket = None
 
-   x = joystick.get_axis(0) * 10
-   y = joystick.get_axis(1) * 10
+      self.started = True
+      self.__thread = threading.Thread(target=self.__processLoop)
+      self.__thread.start()
 
-   if prev_x != x and prev_y != y:
-      dataToSend = 'xy:{};{}'.format(int(x), int(y))
-      prev_x = x
-      prev_y = y
+   def isReady(self):
+      return self.__socket is not None
 
-   buttons = joystick.get_numbuttons()
-   for i in range( buttons ):
-      if i == 0:
-         button = joystick.get_button( i )
-         if button == 1:
-            dataToSend = 'speak:ho ho ho'
-   return dataToSend
+   def send(self, cmd):
+      fullCmd = '{}:{}'.format(cmd.cmd, cmd.value)
+      self.__queue.put(fullCmd)
+
+   def __processLoop(self):
+      self.__socket = self.__connect()
+      if self.__socket is None:
+         return
+      while self.started:
+         cmd = self.__queue.get()
+         self.__socket.sendall(cmd.encode())
+
+   def __connect(self):
+      try:
+         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+         s.connect((self.ip, self.port))
+         return s
+      except:
+         return None
+
+   def stop(self):
+      self.started = False
+      self.__thread.join()
+
+class Joystick:
+   def __init__(self):
+      self.__joystick = None
+      self.__prev_x = 0
+      self.__prev_y = 0
+
+   def __initJoiystick(self):
+      pygame.joystick.init()
+      if pygame.joystick.get_count() == 0:
+         return
+
+      joystickId = 0
+      self.__joystick = pygame.joystick.Joystick(joystickId)
+      self.__joystick.init()
+
+   def isReady(self):
+      return self.__joystick is not None
+
+   def get(self):
+      data = []
+      if self.__joystick is None:
+         return data
+
+      axes = self.__joystick.get_numaxes()
+      x = int(self.__joystick.get_axis(0) * 10)
+      y = int(self.__joystick.get_axis(1) * 10)
+      if self.__prev_x != x and self.__prev_y != y:
+         data.append(Cmd('xy', '{};{}'.format(x, y)))
+         self.__prev_x = x
+         self.__prev_y = y
+
+      buttons = joystick.get_numbuttons()
+      for i in range( buttons ):
+         if i == 0:
+            button = joystick.get_button( i )
+            if button == 1:
+               data.append(Cmd('speak', 'Hello. I am robot.'))
+      return data
+
+class RoboControl:
+   def __init__(self):
+      pygame.init()
+      self.__webFrame = None
+      self.__cmdSender = None
+      self.__joystick = None
+      self.__screen = None
+      self.__clock = pygame.time.Clock()
+      self.__font = pygame.font.SysFont('Arial', 25)
+
+   def loop(self):
+      self.__initScreen()
+      self.__joystick = Joystick()
+      self.__webFrame = WebFrame(GATE_IP, FRAME_PORT)
+      self.__cmdSender = CmdSender(GATE_IP, GATE_PORT)
+
+      # Checkers
+      self.__button('green' if self.__joystick.isReady else 'red', (730, 120), (200, 50), 'Joystick', 'blue', (780, 130))
+      self.__button('green' if self.__cmdSender.isReady else 'red', (730, 200), (200, 50), 'Lego connection', 'blue', (760, 210))
+
+      self.__loop()
+
+   def __button(self, bcolor, xy, wh, text, tcolor, txy):
+      btnColor = pygame.Color(bcolor)
+      txtColor = pygame.Color(tcolor)
+      pygame.draw.rect(self.__screen, btnColor, (xy[0], xy[1], wh[0], wh[1]))
+      self.__screen.blit(self.__font.render(text, True, txtColor), txy)
+      pygame.display.update()
+
+   def __initScreen(self):
+      self.__screen = pygame.display.set_mode(SCREEN_SIZE)
+      pygame.display.set_caption('Robot controller v.{}'.format(__version__))
+
+      ico = pygame.image.load(os.path.join(IMG_FOLDER, 'icon.jpg'))
+      pygame.display.set_icon(ico)
+
+      bkgnd = pygame.image.load(os.path.join(IMG_FOLDER, 'tunnel.jpg'))
+      self.__screen.blit(bkgnd, (0, 0))
+
+      pygame.draw.rect(self.__screen, pygame.Color('orange'), (FRAME_POS[0] - 5, FRAME_POS[1] - 5, FRAME_SIZE[0] + 10, FRAME_SIZE[1] + 10))
+      pygame.display.update()
+
+   def __loop(self):
+      while True:
+         frame = self.__webFrame.getFrame()
+         self.__screen.blit(frame, FRAME_POS)
+         pygame.display.update()
+
+         data = self.__joystick.get()
+         for cmd in data:
+            self.__cmdSender.send(cmd)
+
+         for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+               self.__webFrame.stop()
+               self.__cmdSender.stop()
+               sys.exit()
+         self.__clock.tick(60)
 
 if __name__ == '__main__':
-   screen = initScreen()
-   clock = pygame.time.Clock()
-
-   joystick = initJoiystick()
-   jsBtn = pygame.Color('green') if joystick is not None else pygame.Color('red')
-   pygame.draw.rect(screen, jsBtn, (750, 120, 100, 50))
-
-   brickSock = connectToBrick(GATE_IP, GATE_PORT)
-   brickBtn = pygame.Color('green') if brickSock is not None else pygame.Color('red')
-   pygame.draw.rect(screen, brickBtn, (750, 220, 100, 50))
-
-   while True:
-      frame = getFrame(GATE_IP, FRAME_PORT)
-      screen.blit(frame, (40, 120))
-
-      pygame.display.flip()
-      dataToSend = handleJoystick()
-      if dataToSend and brickSock is not None:
-         brickSock.sendall(dataToSend.encode())
-
-      for event in pygame.event.get():
-         if event.type == pygame.QUIT:
-            brickSock.close()
-            sys.exit()
-
-      clock.tick(60)
-
+   c = RoboControl()
+   c.loop()

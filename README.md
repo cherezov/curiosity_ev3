@@ -30,9 +30,10 @@ Below is the log of what was done, what is needed to be done and several notes a
 - [x] Make same test with WebCamera and EV3 Brick connected to MR3020 board via USB hab
 - [x] Connect joystick to laptop
 - [x] Find out a way to code joystick: pygame is quite good!
-- [ ] Develop python3 listenening server for EV3 Brick
-- [ ] Code client side application [check this](http://stackoverflow.com/questions/27676637/stream-video-in-python-use-pygame-lib)
+- [x] Develop python3 listenening server for EV3 Brick
+- [x] Code [client side application](src/client)
 - [x] Add auto configuration usb0 interface on MR3020 board [configure DHCP?](http://en.qi-hardware.com/wiki/Ethernet_over_USB#Editing-the-Host's-Network-Configuration)
+- [ ] Run server app as daemon at runtime
 
 ## Configuration notes
 ### USB reverse tethering

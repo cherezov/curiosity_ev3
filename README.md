@@ -34,6 +34,7 @@ Below is the log of what was done, what is needed to be done and several notes a
 - [x] Code [client side application](src/client)
 - [x] Add auto configuration usb0 interface on MR3020 board [configure DHCP?](http://en.qi-hardware.com/wiki/Ethernet_over_USB#Editing-the-Host's-Network-Configuration)
 - [ ] Run server app as daemon at runtime
+- [ ] Inernet access for MR3020 brick and/or auto update listening server
 
 ## Configuration notes
 ### USB reverse tethering

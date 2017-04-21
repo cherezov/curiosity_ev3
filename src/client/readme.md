@@ -4,6 +4,9 @@ Client to connect to Lego Mindstorms EV3 and control it using joystick.
 ## Requires
  * Python3
  * [pygame](http://pygame.org) module
+ 
+## TODO:
+ - [ ] Client stops too long and bugy
 
 ## ver 0.1
 ![v0.1](../../images/client_v0.1.jpg)

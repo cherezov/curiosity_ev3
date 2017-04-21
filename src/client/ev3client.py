@@ -10,7 +10,7 @@ import threading
 import queue
 from urllib.request import urlopen
 
-__version__ = '0.1'
+__version__ = '0.2'
 
 GATE_IP = "192.168.1.120" # ip address of MR3020 board
 GATE_PORT= 88             # port number on MR3020 board which redirects to lego
@@ -33,7 +33,7 @@ class WebFrame:
       self.__thread = threading.Thread(target=self.frameLoop)
       self.__thread.start()
 
-   def getFrame(self):
+   def __getFrame(self):
       try:
          frame_url = CAMERA_URL_FORMAT.format(self.ip, self.port)
          image_str = urlopen(frame_url).read()
@@ -47,7 +47,7 @@ class WebFrame:
 
    def frameLoop(self):
       while self.started:
-         self.__frame = self.getFrame()
+         self.__frame = self.__getFrame()
 
    def getFrame(self):
       return self.__frame
@@ -61,12 +61,16 @@ class Cmd:
       self.cmd = cmd
       self.value = value
 
+   def __repr__(self):
+      return '{}:{}|'.format(self.cmd, self.value)
+
 class CmdSender:
    def __init__(self, ip, port):
       self.ip = ip
       self.port = port
       self.__queue = queue.Queue()
       self.__socket = None
+      self.__prevCmd = None
 
       self.started = True
       self.__thread = threading.Thread(target=self.__processLoop)
@@ -76,8 +80,11 @@ class CmdSender:
       return self.__socket is not None
 
    def send(self, cmd):
-      fullCmd = '{}:{}'.format(cmd.cmd, cmd.value)
-      self.__queue.put(fullCmd)
+      cmd = str(cmd)
+      if cmd == self.__prevCmd:
+         return
+      self.__queue.put(cmd)
+      self.__prevCmd = cmd
 
    def __processLoop(self):
       self.__socket = self.__connect()
@@ -104,6 +111,7 @@ class Joystick:
       self.__joystick = None
       self.__prev_x = 0
       self.__prev_y = 0
+      self.__initJoiystick()
 
    def __initJoiystick(self):
       pygame.joystick.init()
@@ -122,18 +130,19 @@ class Joystick:
       if self.__joystick is None:
          return data
 
+      # TODO: think about this calculations
       axes = self.__joystick.get_numaxes()
-      x = int(self.__joystick.get_axis(0) * 10)
-      y = int(self.__joystick.get_axis(1) * 10)
+      x = int(self.__joystick.get_axis(0) * 100) / 10
+      y = int(self.__joystick.get_axis(1) * 100) / 10
       if self.__prev_x != x and self.__prev_y != y:
          data.append(Cmd('xy', '{};{}'.format(x, y)))
          self.__prev_x = x
          self.__prev_y = y
 
-      buttons = joystick.get_numbuttons()
+      buttons = self.__joystick.get_numbuttons()
       for i in range( buttons ):
          if i == 0:
-            button = joystick.get_button( i )
+            button = self.__joystick.get_button( i )
             if button == 1:
                data.append(Cmd('speak', 'Hello. I am robot.'))
       return data
@@ -184,7 +193,7 @@ class RoboControl:
       while True:
          frame = self.__webFrame.getFrame()
          self.__screen.blit(frame, FRAME_POS)
-         pygame.display.update()
+         pygame.display.flip()
 
          data = self.__joystick.get()
          for cmd in data:

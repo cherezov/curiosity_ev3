@@ -7,6 +7,7 @@ Client to connect to Lego Mindstorms EV3 and control it using joystick.
  
 ## TODO:
  - [ ] Client stops too long and bugy
+ - [ ] Add control with keyboard arrows
 
 ## ver 0.1
 ![v0.1](../../images/client_v0.1.jpg)

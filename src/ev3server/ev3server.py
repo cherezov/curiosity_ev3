@@ -19,6 +19,9 @@ class EV3Server:
       self.__peer_sock = None
       self.__peer_addr = None
 
+      self.__leftMotor = ev3.LargeMotor('outB')
+      self.__rightMotor = ev3.LargeMotor('outC')
+
    def __log(self, msg):
       if not self.quite:
          print(msg)
@@ -42,6 +45,14 @@ class EV3Server:
       if cmd == 'speak':
          self.__log('* Speaking "{}"'.format(value))
          ev3.Sound.speak(value).wait()
+      elif cmd == 'xy':
+         x, y = value.split(';')
+         x = float(x)
+         y = float(y)
+         self.__leftMotor.speed_sp = self.__leftMotor.max_speed / 10 * x
+         self.__leftMotor.run_forever()
+         self.__rightMotor.speed_sp = self.__rightMotor.max_speed / 10 * y
+         self.__rightMotor.run_forever()
       elif cmd == 'motorA':
          self.__log('* motorA={}'.format(value))
       elif cmd == 'motorB':
@@ -59,25 +70,26 @@ class EV3Server:
          while self.__started:
             r, w, x = select.select([self.__peer_sock], [self.__peer_sock], [], 1)
             if self.__peer_sock in r:
-               data = self.__peer_sock.recv(1024).decode()
-               data = data.strip()
+               datas = self.__peer_sock.recv(128).decode()
 
-               if not data or data.lower() == 'quit':
-                  self.__log('* peer is going to disconnect')
-                  self.__peer_sock.close()
-                  self.__log('* peer disconnected')
-                  break
-               self.__log('* Received: "{}"'.format(data))
+               for data in datas.split('|'):
+                  data = data.strip()
+                  if data.lower() == 'quit':
+                     self.__log('* peer is going to disconnect')
+                     self.__peer_sock.close()
+                     self.__log('* peer disconnected')
+                     break
+                  self.__log('* Received: "{}"'.format(data))
 
-               if ':' in data:
-                  cmd, value = data.split(':')
-                  try:
-                     self.handle(cmd.strip(), value.strip())
-                  except Exception as e:
-                     print('Handle exception: {}'.format(e))
+                  if ':' in data:
+                     cmd, value = data.split(':')
+                     try:
+                        self.handle(cmd.strip(), value.strip())
+                     except Exception as e:
+                        print('Handle exception: {}'.format(e))
             elif self.__peer_sock in w:
                self.reply()
-            
+
          self.__peer_sock = None
          self.__peer_addr = None
 

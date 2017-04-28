@@ -4,13 +4,15 @@
 import io
 import os
 import sys
+import time
 import pygame
 import socket
 import threading
 import queue
+import select
 from urllib.request import urlopen
 
-__version__ = '0.2'
+__version__ = '0.3'
 
 GATE_IP = "192.168.1.120" # ip address of MR3020 board
 GATE_PORT= 88             # port number on MR3020 board which redirects to lego
@@ -30,7 +32,7 @@ class WebFrame:
       self.__frame = pygame.transform.scale(self.__frame, FRAME_SIZE)
 
       self.started = True
-      self.__thread = threading.Thread(target=self.frameLoop)
+      self.__thread = threading.Thread(target=self.frameLoop, daemon=True)
       self.__thread.start()
 
    def __getFrame(self):
@@ -54,7 +56,7 @@ class WebFrame:
 
    def stop(self):
       self.started = False
-      self.__thread.join()
+      #self.__thread.join()
 
 class Cmd:
    def __init__(self, cmd, value):
@@ -69,11 +71,12 @@ class CmdSender:
       self.ip = ip
       self.port = port
       self.__queue = queue.Queue()
+      self.in_queue = queue.Queue()
       self.__socket = None
       self.__prevCmd = None
 
       self.started = True
-      self.__thread = threading.Thread(target=self.__processLoop)
+      self.__thread = threading.Thread(target=self.__processLoop, daemon=True)
       self.__thread.start()
 
    def isReady(self):
@@ -83,7 +86,7 @@ class CmdSender:
       cmd = str(cmd)
       if cmd == self.__prevCmd:
          return
-      self.__queue.put(cmd)
+      self.__queue.put_nowait(cmd)
       self.__prevCmd = cmd
 
    def __processLoop(self):
@@ -91,8 +94,17 @@ class CmdSender:
       if self.__socket is None:
          return
       while self.started:
-         cmd = self.__queue.get()
-         self.__socket.sendall(cmd.encode())
+         try:
+            r, w, x = select.select([self.__socket], [self.__socket], [], 1)
+            if self.__socket in r:
+               data = self.__socket.recv(128).decode()
+               self.in_queue.put(data)
+            if self.__socket in w:
+               cmd = self.__queue.get_nowait()
+               self.__socket.sendall(cmd.encode())
+               pass
+         except Exception as e:
+            pass
 
    def __connect(self):
       try:
@@ -104,7 +116,7 @@ class CmdSender:
 
    def stop(self):
       self.started = False
-      self.__thread.join()
+      #self.__thread.join()
 
 class Joystick:
    def __init__(self):
@@ -132,9 +144,15 @@ class Joystick:
 
       # TODO: think about this calculations
       axes = self.__joystick.get_numaxes()
-      x = int(self.__joystick.get_axis(0) * 100) / 10
-      y = int(self.__joystick.get_axis(1) * 100) / 10
-      if self.__prev_x != x and self.__prev_y != y:
+      x = self.__joystick.get_axis(0)
+      y = self.__joystick.get_axis(1)
+      x = int(x * 100) / 10
+      y = int(y * 100) / 10
+      if abs(x) < 2:
+         x = 0
+      if abs(y) < 2:
+         y = 0
+      if self.__prev_x != x or self.__prev_y != y:
          data.append(Cmd('xy', '{};{}'.format(x, y)))
          self.__prev_x = x
          self.__prev_y = y
@@ -156,6 +174,8 @@ class RoboControl:
       self.__screen = None
       self.__clock = pygame.time.Clock()
       self.__font = pygame.font.SysFont('Arial', 25)
+      self.__ir_val = 0
+      self.__last_ping_time = 0
 
    def loop(self):
       self.__initScreen()
@@ -164,8 +184,7 @@ class RoboControl:
       self.__cmdSender = CmdSender(GATE_IP, GATE_PORT)
 
       # Checkers
-      self.__button('green' if self.__joystick.isReady else 'red', (730, 120), (200, 50), 'Joystick', 'blue', (780, 130))
-      self.__button('green' if self.__cmdSender.isReady else 'red', (730, 200), (200, 50), 'Lego connection', 'blue', (760, 210))
+      #self.__button('green' if self.__cmdSender.isReady else 'red', (730, 200), (200, 50), 'Lego connection', 'blue', (760, 210))
 
       self.__loop()
 
@@ -193,6 +212,22 @@ class RoboControl:
       while True:
          frame = self.__webFrame.getFrame()
          self.__screen.blit(frame, FRAME_POS)
+
+         while not self.__cmdSender.in_queue.empty():
+            data = self.__cmdSender.in_queue.get_nowait()
+            if data.startswith('ir'):
+               self.__ir_val = data.split(':')[1]
+            elif data.startswith('ping'):
+               self.__last_ping_time = time.time()
+
+         dead = time.time() - self.__last_ping_time > 5
+         if dead:
+            self.__button('red', (730, 120), (200, 50), 'Brick lost', 'blue', (790, 130))
+            self.__ir_val = 'ERROR'
+         else:
+            self.__button('green', (730, 120), (200, 50), 'Brick ready', 'blue', (790, 130))
+
+         self.__screen.blit(self.__font.render('distance: {}cm'.format(self.__ir_val), True, pygame.Color('red')), (FRAME_POS[0] + FRAME_SIZE[0] - 300, FRAME_POS[1]+FRAME_SIZE[1]-50))
          pygame.display.flip()
 
          data = self.__joystick.get()

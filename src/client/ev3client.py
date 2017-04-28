@@ -12,16 +12,25 @@ import queue
 import select
 from urllib.request import urlopen
 
-__version__ = '0.3'
+__version__ = '0.4'
 
 GATE_IP = "192.168.1.120" # ip address of MR3020 board
 GATE_PORT= 88             # port number on MR3020 board which redirects to lego
 FRAME_PORT = 8080         # webcamera port on MR3020
 FRAME_SIZE = (640, 480)   # must be synced with web camera settings
-SCREEN_SIZE = (1000, 650)
-FRAME_POS = (25, 80)
+SCREEN_SIZE = (1230, 670)
+FRAME_POS = (110, 125)
 IMG_FOLDER = '../../images/'
 CAMERA_URL_FORMAT = 'http://{}:{}/?action=snapshot'
+
+TXT_X = FRAME_POS[0] + FRAME_SIZE[0] + 50
+
+LOW_POWER = 5.5
+ALIVE_SEC = 3
+MIN_DISTANCE = 15
+
+RED = pygame.Color('red')
+LIGHT_GREEN = pygame.Color(95, 190, 190)
 
 class WebFrame:
    def __init__(self, ip, port):
@@ -32,7 +41,8 @@ class WebFrame:
       self.__frame = pygame.transform.scale(self.__frame, FRAME_SIZE)
 
       self.started = True
-      self.__thread = threading.Thread(target=self.frameLoop, daemon=True)
+      self.__thread = threading.Thread(target=self.frameLoop)
+      self.__thread.daemon = True
       self.__thread.start()
 
    def __getFrame(self):
@@ -59,14 +69,22 @@ class WebFrame:
       #self.__thread.join()
 
 class Cmd:
+   KeyValDelimiter = ':'
+
    def __init__(self, cmd, value):
       self.cmd = cmd
       self.value = value
 
-   def __repr__(self):
-      return '{}:{}|'.format(self.cmd, self.value)
+   @staticmethod
+   def parse(raw):
+      if Cmd.KeyValDelimiter not in raw:
+         return Cmd(None, None)
+      return Cmd(*raw.split(Cmd.KeyValDelimiter))
 
-class CmdSender:
+   def __repr__(self):
+      return '{}{}{}'.format(self.cmd, Cmd.KeyValDelimiter, self.value)
+
+class CmdTransport:
    def __init__(self, ip, port):
       self.ip = ip
       self.port = port
@@ -76,7 +94,8 @@ class CmdSender:
       self.__prevCmd = None
 
       self.started = True
-      self.__thread = threading.Thread(target=self.__processLoop, daemon=True)
+      self.__thread = threading.Thread(target=self.__processLoop)
+      self.__thread.daemon = True
       self.__thread.start()
 
    def isReady(self):
@@ -137,12 +156,11 @@ class Joystick:
    def isReady(self):
       return self.__joystick is not None
 
-   def get(self):
+   def read(self):
       data = []
       if self.__joystick is None:
          return data
 
-      # TODO: think about this calculations
       axes = self.__joystick.get_numaxes()
       x = self.__joystick.get_axis(0)
       y = self.__joystick.get_axis(1)
@@ -165,82 +183,127 @@ class Joystick:
                data.append(Cmd('speak', 'Hello. I am robot.'))
       return data
 
+def sumd(e1, e2):
+   return [e1[i] + e2[i] for i in range(len(e1))]
+
 class RoboControl:
    def __init__(self):
       pygame.init()
       self.__webFrame = None
-      self.__cmdSender = None
+      self.__cmdTransport = None
       self.__joystick = None
       self.__screen = None
       self.__clock = pygame.time.Clock()
       self.__font = pygame.font.SysFont('Arial', 25)
-      self.__ir_val = 0
+      self.__last_ir_value= 0
       self.__last_ping_time = 0
+      self.__last_power_value = 0
 
-   def loop(self):
+   def run(self):
       self.__initScreen()
       self.__joystick = Joystick()
       self.__webFrame = WebFrame(GATE_IP, FRAME_PORT)
-      self.__cmdSender = CmdSender(GATE_IP, GATE_PORT)
-
-      # Checkers
-      #self.__button('green' if self.__cmdSender.isReady else 'red', (730, 200), (200, 50), 'Lego connection', 'blue', (760, 210))
-
+      self.__cmdTransport = CmdTransport(GATE_IP, GATE_PORT)
       self.__loop()
 
-   def __button(self, bcolor, xy, wh, text, tcolor, txy):
-      btnColor = pygame.Color(bcolor)
-      txtColor = pygame.Color(tcolor)
-      pygame.draw.rect(self.__screen, btnColor, (xy[0], xy[1], wh[0], wh[1]))
-      self.__screen.blit(self.__font.render(text, True, txtColor), txy)
-      pygame.display.update()
+   def __txtRow(self, render, row):
+      hrow = 50
+      self.__screen.blit(render, (TXT_X, FRAME_POS[1] + hrow * (row - 1)))
 
    def __initScreen(self):
       self.__screen = pygame.display.set_mode(SCREEN_SIZE)
-      pygame.display.set_caption('Robot controller v.{}'.format(__version__))
+      pygame.display.set_caption('Legowrt v.{}'.format(__version__))
 
       ico = pygame.image.load(os.path.join(IMG_FOLDER, 'icon.jpg'))
       pygame.display.set_icon(ico)
 
-      bkgnd = pygame.image.load(os.path.join(IMG_FOLDER, 'tunnel.jpg'))
-      self.__screen.blit(bkgnd, (0, 0))
+      self.__bkgnd_img = pygame.image.load(os.path.join(IMG_FOLDER, 'frame.jpg'))
 
-      pygame.draw.rect(self.__screen, pygame.Color('orange'), (FRAME_POS[0] - 5, FRAME_POS[1] - 5, FRAME_SIZE[0] + 10, FRAME_SIZE[1] + 10))
-      pygame.display.update()
+   def __dispatchResponse(self):
+      while not self.__cmdTransport.in_queue.empty():
+         data = self.__cmdTransport.in_queue.get_nowait()
+         cmd = Cmd.parse(data)
+         if cmd.cmd == 'ir':
+            self.onIR(cmd)
+         elif cmd.cmd == 'ping':
+            self.onPing(cmd)
+         elif cmd.cmd == 'power':
+            self.onPower(cmd)
+
+   def onPing(self, cmd):
+      self.__last_ping_time = time.time()
+
+   def onIR(self, cmd):
+      self.__last_ir_value = cmd.val
+
+   def onPower(self, cmd):
+      self.__last_power_value = cmd.val
+
+   def __handlePing(self):
+      alive = time.time() - self.__last_ping_time < ALIVE_SEC
+      txt = 'LEGO connection lost'
+      color = RED
+      if alive:
+         txt = 'ready'
+         color = LIGHT_GREEN
+
+      render = self.__font.render(txt, True, color)
+      self.__txtRow(render, row=1)
+      self.__last_ir_value = '0'
+
+   def __handlePower(self):
+      ok = self.__last_power_value > LOW_POWER
+      txt = 'Low brick battery {}V'.format(self.__last_power_value)
+      color = RED
+      if ok:
+         txt = 'Battery {}V'.format(self.__last_power_value)
+         color = LIGHT_GREEN
+
+      render = self.__font.render(txt, True, color)
+      self.__txtRow(render, row=2)
+
+   def __joysticStatus(self):
+      ok = self.__joystick.isReady()
+      txt = 'Joystick disconnected'
+      color = RED
+      if ok:
+         txt = 'Joystick ready'
+         color = LIGHT_GREEN
+
+      render = self.__font.render(txt, True, color)
+      self.__txtRow(render, row=3)
+
+   def __handleDistance(self):
+      color = LIGHT_GREEN if int(self.__last_ir_value) > MIN_DISTANCE else RED
+      render = self.__font.render('{}==>|'.format(self.__last_ir_value), True, color)
+      self.__txtRow(render, row=10)
 
    def __loop(self):
       while True:
+         self.__screen.blit(self.__bkgnd_img, (0, 0))
+
          frame = self.__webFrame.getFrame()
          self.__screen.blit(frame, FRAME_POS)
 
-         while not self.__cmdSender.in_queue.empty():
-            data = self.__cmdSender.in_queue.get_nowait()
-            if data.startswith('ir'):
-               self.__ir_val = data.split(':')[1]
-            elif data.startswith('ping'):
-               self.__last_ping_time = time.time()
+         self.__dispatchResponse()
+         self.__handleDistance()
+         self.__handlePing()
+         self.__handlePower()
+         self.__joysticStatus()
 
-         dead = time.time() - self.__last_ping_time > 5
-         if dead:
-            self.__button('red', (730, 120), (200, 50), 'Brick lost', 'blue', (790, 130))
-            self.__ir_val = 'ERROR'
-         else:
-            self.__button('green', (730, 120), (200, 50), 'Brick ready', 'blue', (790, 130))
-
-         self.__screen.blit(self.__font.render('distance: {}cm'.format(self.__ir_val), True, pygame.Color('red')), (FRAME_POS[0] + FRAME_SIZE[0] - 300, FRAME_POS[1]+FRAME_SIZE[1]-50))
          pygame.display.flip()
 
-         data = self.__joystick.get()
+         data = self.__joystick.read()
          for cmd in data:
-            self.__cmdSender.send(cmd)
+            self.__cmdTransport.send(cmd)
 
          for event in pygame.event.get():
             if event.type == pygame.QUIT:
                self.__webFrame.stop()
-               self.__cmdSender.stop()
+               self.__cmdTransport.stop()
                sys.exit()
          self.__clock.tick(60)
 
 if __name__ == '__main__':
    c = RoboControl()
-   c.loop()
+   c.run()

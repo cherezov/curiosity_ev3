@@ -25,7 +25,7 @@ CAMERA_URL_FORMAT = 'http://{}:{}/?action=snapshot'
 
 TXT_X = FRAME_POS[0] + FRAME_SIZE[0] + 50
 
-LOW_POWER = 5.5
+LOW_POWER = 6.5
 ALIVE_SEC = 3
 MIN_DISTANCE = 15
 
@@ -79,7 +79,7 @@ class Cmd:
    def parse(raw):
       if Cmd.KeyValDelimiter not in raw:
          return Cmd(None, None)
-      return Cmd(*raw.split(Cmd.KeyValDelimiter))
+      return Cmd(*raw.split(Cmd.KeyValDelimiter)[:2])
 
    def __repr__(self):
       return '{}{}{}'.format(self.cmd, Cmd.KeyValDelimiter, self.value)
@@ -120,8 +120,8 @@ class CmdTransport:
                self.in_queue.put(data)
             if self.__socket in w:
                cmd = self.__queue.get_nowait()
+               print('sending {}'.format(cmd))
                self.__socket.sendall(cmd.encode())
-               pass
          except Exception as e:
             pass
 
@@ -180,7 +180,15 @@ class Joystick:
          if i == 0:
             button = self.__joystick.get_button( i )
             if button == 1:
-               data.append(Cmd('speak', 'Hello. I am robot.'))
+               with open('say') as f:
+                  l = f.readline()
+                  data.append(Cmd('speak', l))
+         if i == 1:
+            button = self.__joystick.get_button( i )
+            if button == 1:
+               data.append(Cmd('get', 'in'))
+            elif button == 0:
+               data.append(Cmd('get', 'out'))
       return data
 
 def sumd(e1, e2):
@@ -234,29 +242,34 @@ class RoboControl:
       self.__last_ping_time = time.time()
 
    def onIR(self, cmd):
-      self.__last_ir_value = cmd.val
+      self.__last_ir_value = cmd.value
 
    def onPower(self, cmd):
-      self.__last_power_value = cmd.val
+      self.__last_power_value = cmd.value
 
    def __handlePing(self):
       alive = time.time() - self.__last_ping_time < ALIVE_SEC
       txt = 'LEGO connection lost'
       color = RED
       if alive:
-         txt = 'ready'
+         txt = 'Connected'
          color = LIGHT_GREEN
+      else:
+         self.__last_ir_value = '0'
 
       render = self.__font.render(txt, True, color)
       self.__txtRow(render, row=1)
-      self.__last_ir_value = '0'
 
    def __handlePower(self):
-      ok = self.__last_power_value > LOW_POWER
-      txt = 'Low brick battery {}V'.format(self.__last_power_value)
+      try:
+         val = float(self.__last_power_value)
+      except:
+         return
+      ok = val > LOW_POWER
+      txt = 'Low brick battery {}V'.format(val)
       color = RED
       if ok:
-         txt = 'Battery {}V'.format(self.__last_power_value)
+         txt = 'Battery {}V'.format(val)
          color = LIGHT_GREEN
 
       render = self.__font.render(txt, True, color)
@@ -274,8 +287,13 @@ class RoboControl:
       self.__txtRow(render, row=3)
 
    def __handleDistance(self):
-      color = LIGHT_GREEN if int(self.__last_ir_value) > MIN_DISTANCE else RED
-      render = self.__font.render('{}==>|'.format(self.__last_ir_value), True, color)
+      try:
+         val = int(self.__last_ir_value)
+      except:
+         return
+      color = LIGHT_GREEN if val > MIN_DISTANCE else RED
+      dist = int(val / 10) * '='
+      render = self.__font.render('{} {}>|'.format(val, dist), True, color)
       self.__txtRow(render, row=10)
 
    def __loop(self):
@@ -295,6 +313,7 @@ class RoboControl:
 
          data = self.__joystick.read()
          for cmd in data:
+            print(cmd)
             self.__cmdTransport.send(cmd)
 
          for event in pygame.event.get():

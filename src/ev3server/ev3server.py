@@ -4,10 +4,29 @@
 import socket
 import select
 
+class ev3devEmulator:
+   def __init__(self):
+      print('ev3 emulator started.')
+
+   class LargeMotor:
+      def __init__(self, name):
+         print('Large motor "{}" created.'.format(name) )
+
+   class Sound:
+      def __init__(self):
+         pass
+
+      def speak(self, text):
+         return self
+
+      def wait(self):
+         pass
+
 try:
    import ev3dev.ev3 as ev3
 except:
    print('Error: ev3dev module not found!')
+   ev3 = ev3devEmulator()
 
 class EV3Server:
    def __init__(self, port, quite):
@@ -27,6 +46,8 @@ class EV3Server:
          print(msg)
 
    def start(self):
+      print('start')
+
       self.__log('== EV3 Server ==')
       self.__log('* starting server {}:{}'.format(self.host, self.port))
       try:
@@ -45,6 +66,8 @@ class EV3Server:
       if cmd == 'speak':
          self.__log('* Speaking "{}"'.format(value))
          ev3.Sound.speak(value).wait()
+      elif cmd == 'test':
+         self.__log('* test "{}"'.format(value))
       elif cmd == 'xy':
          x, y = value.split(';')
          x = float(x)
@@ -60,7 +83,7 @@ class EV3Server:
       elif cmd == 'smallMotor':
          self.__log('* smallMotor={}'.format(value))
       else:
-         self.__log('Unknown command "{0}"'.format(value))
+         self.__log('Unknown command "{0}"'.format(cmd))
 
    def accept(self):
       while self.__started:
@@ -70,7 +93,9 @@ class EV3Server:
          while self.__started:
             r, w, x = select.select([self.__peer_sock], [self.__peer_sock], [], 1)
             if self.__peer_sock in r:
-               datas = self.__peer_sock.recv(128).decode()
+               datas = self.__peer_sock.recv(128).decode().strip()
+               if not datas:
+                  continue
 
                for data in datas.split('|'):
                   data = data.strip()
@@ -104,20 +129,14 @@ class EV3Server:
          self.__socket = None
 
 if __name__ == '__main__':
-   import sys
+   import configparser
 
-   port = 8080
-   quite = False
-   for kv in sys.argv[1:]:
-      key, value = kv.split('=')
-      key = key.lower().strip()
-      value = value.lower().strip()
-      if key == 'port':
-         port = int(value)
-      elif key == 'quite':
-         quite = value == '1' or value == 'true'
-      else:
-         pass
+   config = configparser.ConfigParser()
+   config.read('ev3server.cfg')
+
+   srvCfg = config['server']
+   port = int(srvCfg['port'])
+   quite = srvCfg['quite'] == 'yes' or srvCfg['quite'] == 'true'
 
    server = EV3Server(port, quite)
    try:
@@ -125,5 +144,7 @@ if __name__ == '__main__':
       server.accept()
    except KeyboardInterrupt:
       pass
+   except Exception:
+      print('Exception')
    finally:
       server.stop()

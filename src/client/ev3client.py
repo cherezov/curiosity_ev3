@@ -14,22 +14,34 @@ from urllib.request import urlopen
 
 __version__ = '0.4'
 
-GATE_IP = "192.168.1.120" # ip address of MR3020 board
-GATE_PORT= 88             # port number on MR3020 board which redirects to lego
-FRAME_PORT = 8080         # webcamera port on MR3020
-FRAME_SIZE = (640, 480)   # must be synced with web camera settings
-SCREEN_SIZE = (1230, 670)
-FRAME_POS = (110, 125)
-IMG_FOLDER = '../../images/'
-CAMERA_URL_FORMAT = 'http://{}:{}/?action=snapshot'
+import configparser
+
+config = configparser.ConfigParser()
+config.read('ev3client.cfg')
+
+mr3020Cfg = config['mr3020-board']
+GATE_IP = mr3020Cfg['ip']
+GATE_PORT= int(mr3020Cfg['port'])
+
+frameCfg = config['camera-frame']
+CAMERA_URL_FORMAT = frameCfg['camera-url']
+FRAME_PORT = int(frameCfg['port'])
+
+FRAME_SIZE = (int(frameCfg['width']), int(frameCfg['height']))   # must be synced with web camera settings
+FRAME_POS = (int(frameCfg['pos-x']), int(frameCfg['pos-y']))
+
+windowCfg = config['window']
+SCREEN_SIZE = (int(windowCfg['width']), int(windowCfg['height']))
+IMG_FOLDER = windowCfg['img-path']
 
 TXT_X = FRAME_POS[0] + FRAME_SIZE[0] + 50
 
-LOW_POWER = 6.5
-ALIVE_SEC = 3
-MIN_DISTANCE = 15
+settingsCfg = config['settings']
+LOW_POWER = float(settingsCfg['battery-warn'])
+ALIVE_SEC = float(settingsCfg['ping-warn'])
+MIN_DISTANCE = float(settingsCfg['distance-warn'])
 
-RED = pygame.Color('red')
+RED = pygame.Color(settingsCfg['warn-color'])
 LIGHT_GREEN = pygame.Color(95, 190, 190)
 
 class WebFrame:
@@ -120,17 +132,20 @@ class CmdTransport:
                self.in_queue.put(data)
             if self.__socket in w:
                cmd = self.__queue.get_nowait()
-               print('sending {}'.format(cmd))
                self.__socket.sendall(cmd.encode())
          except Exception as e:
+            print(e)
             pass
 
    def __connect(self):
       try:
+         print('Connecting to {}:{}', self.ip, self.port)
          s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
          s.connect((self.ip, self.port))
+         print('Connected')
          return s
-      except:
+      except Exception as e:
+         print(e)
          return None
 
    def stop(self):
@@ -207,9 +222,12 @@ class RoboControl:
       self.__last_ping_time = 0
       self.__last_power_value = 0
 
-   def run(self):
+      self.__move_ticker = 0
+      self.__move_power = 0
+
+   def run(self, joystick = Joystick):
       self.__initScreen()
-      self.__joystick = Joystick()
+      self.__joystick = joystick()
       self.__webFrame = WebFrame(GATE_IP, FRAME_PORT)
       self.__cmdTransport = CmdTransport(GATE_IP, GATE_PORT)
       self.__loop()
@@ -309,11 +327,34 @@ class RoboControl:
          self.__handlePower()
          self.__joysticStatus()
 
+         keys=pygame.key.get_pressed()
+         if keys[pygame.K_ESCAPE]:
+            return
+         if keys[pygame.K_LEFT]:
+            if self.__move_ticker == 0:
+               self.__move_ticker = 2 
+            print('Left pwr={}'.format(self.__move_power))
+         if keys[pygame.K_RIGHT]:
+            if self.__move_ticker == 0:   
+               self.__move_ticker = 2     
+            print('Right pwr={}'.format(self.__move_power))
+         if keys[pygame.K_UP]:
+            if self.__move_ticker == 0:
+               self.__move_ticker = 2
+            print('Up pwr={}'.format(self.__move_power))
+         if keys[pygame.K_DOWN]:
+            if self.__move_ticker == 0:   
+               self.__move_ticker = 2    
+            print('Down pwr={}'.format(self.__move_power))
+
+         if self.__move_ticker > 0:
+             self.__move_ticker -= 1
+
+
          pygame.display.flip()
 
          data = self.__joystick.read()
          for cmd in data:
-            print(cmd)
             self.__cmdTransport.send(cmd)
 
          for event in pygame.event.get():
@@ -324,5 +365,17 @@ class RoboControl:
          self.__clock.tick(60)
 
 if __name__ == '__main__':
+   import sys
    c = RoboControl()
-   c.run()
+
+   class JoystickTest:
+      def __init__(self):
+         pass
+
+      def isReady(self):
+         return True
+
+      def read(self):
+         return [Cmd('test', 'test')]
+
+   c.run(JoystickTest)

@@ -3,15 +3,13 @@ import time
 from daemon import Daemon
 from importlib import reload
 
-import md
+import ev3server
 
 if __name__ == "__main__":
    class Ev3ServerDaemon(Daemon):
       def run(self):
          self.running = True
-         while True:
-            reload(md)
-            time.sleep(1)
+         ev3server.run()
          self.running = False
 
       def status(self):
@@ -24,7 +22,7 @@ if __name__ == "__main__":
          print('State:\t', 'Running' if self.running else 'Stopped')
          if pid is not None:
             print('PID:\t', pid)
-            print('Version:', md.version())
+            print('Version:', ev3server.__version__)
 
    daemon = Ev3ServerDaemon('/tmp/ev3server.pid')
    if len(sys.argv) == 2:

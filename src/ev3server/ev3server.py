@@ -4,6 +4,8 @@
 import socket
 import select
 
+__version__ = '0.1'
+
 class ev3devEmulator:
    def __init__(self):
       print('ev3 emulator started.')
@@ -128,11 +130,11 @@ class EV3Server:
          self.__socket.close()
          self.__socket = None
 
-if __name__ == '__main__':
+def run():
    import configparser
 
    config = configparser.ConfigParser()
-   config.read('ev3server.cfg')
+   config.read('/home/pavel/git/legowrt/src/ev3server/ev3server.cfg')
 
    srvCfg = config['server']
    port = int(srvCfg['port'])
@@ -148,3 +150,6 @@ if __name__ == '__main__':
       print('Exception')
    finally:
       server.stop()
+
+if __name__ == '__main__':
+   run()

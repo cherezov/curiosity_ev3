@@ -58,7 +58,10 @@ Restart **rinetd**
 ```
 > /etc/init.d/rinetd restart
 ```
-
+3020 is listening on TCP port 2000 and forwards data to UART
+Following line will redirect command to UART using CLI over the network
+```
+sudo echo 'any command' | nc <3020 ip address> 2000
 
 
 

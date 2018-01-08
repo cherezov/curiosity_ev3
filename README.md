@@ -49,10 +49,10 @@ More reading about [OpenWRT usb reverse tethering](https://wiki.openwrt.org/doc/
 EV3 brick part is described [here](http://www.ev3dev.org/docs/tutorials/connecting-to-the-internet-via-usb/)
 
 ### Wires
-USB Hub -> 3020 USB port
-Ev3 brick mini USB -> USB hub
-UVC camera -> USB hub
-3020 mini USB -> external power bank
+USB Hub -> 3020 USB port 
+Ev3 brick mini USB -> USB hub 
+UVC camera -> USB hub 
+3020 mini USB -> external power bank 
 
 ### Port forwarding from MR3020 to EV3
 Port forwarding is described in ```/etc/config/rinetd``` 
@@ -63,6 +63,15 @@ Restart **rinetd**
 ```
 > /etc/init.d/rinetd restart
 ```
+
+Test connection:
+```
+> ssh robot@169.254.233.76
+```
+pass:maker
+link: http://www.ev3dev.org/docs/tutorials/connecting-to-ev3dev-with-ssh/
+
+### Forward to UART
 3020 is listening on TCP port 2000 and forwards data to UART
 Following line will redirect command to UART using CLI over the network
 ```

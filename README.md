@@ -48,6 +48,11 @@ More reading about [OpenWRT usb reverse tethering](https://wiki.openwrt.org/doc/
 
 EV3 brick part is described [here](http://www.ev3dev.org/docs/tutorials/connecting-to-the-internet-via-usb/)
 
+### Wires
+USB Hub -> 3020 USB port
+Ev3 brick mini USB -> USB hub
+UVC camera -> USB hub
+3020 mini USB -> external power bank
 
 ### Port forwarding from MR3020 to EV3
 Port forwarding is described in ```/etc/config/rinetd``` 

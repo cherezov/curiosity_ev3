@@ -71,6 +71,12 @@ Test connection:
 pass:maker
 link: http://www.ev3dev.org/docs/tutorials/connecting-to-ev3dev-with-ssh/
 
+### Ev3 root password
+```
+> sudo passwd
+```
+pass: maker
+
 ### Forward to UART
 3020 is listening on TCP port 2000 and forwards data to UART
 Following line will redirect command to UART using CLI over the network

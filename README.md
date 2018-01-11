@@ -44,23 +44,21 @@ This simply requires additional package to install on MR3020 board
 > opkg install kmod-usb-net-cdc-ether
 > reboot
 ```
-More reading about [OpenWRT usb reverse tethering](https://wiki.openwrt.org/doc/howto/usb.reverse.tethering)
+More info about [OpenWRT usb reverse tethering](https://wiki.openwrt.org/doc/howto/usb.reverse.tethering)
 
 EV3 brick part is described [here](http://www.ev3dev.org/docs/tutorials/connecting-to-the-internet-via-usb/)
 
 ### Wires
-USB Hub -> 3020 USB port 
-Ev3 brick mini USB -> USB hub 
-UVC camera -> USB hub 
-3020 mini USB -> external power bank 
+USB Hub -> 3020 USB port  
+Ev3 brick mini USB -> USB hub  
+UVC camera -> USB hub  
+3020 mini USB -> external power bank  
 
 ### Add ssh publick keys access
 to /etc/dropbear/authorized_keys
 
 ### Port forwarding from MR3020 to EV3
 Port forwarding is described in ```/etc/config/rinetd``` 
-
-**TODO:** add example here
 
 Restart **rinetd**
 ```
@@ -71,7 +69,7 @@ Test connection:
 ```
 > ssh robot@169.254.233.76
 ```
-pass:maker
+pass:maker  
 link: http://www.ev3dev.org/docs/tutorials/connecting-to-ev3dev-with-ssh/
 
 ### Ev3 root password
@@ -81,12 +79,15 @@ link: http://www.ev3dev.org/docs/tutorials/connecting-to-ev3dev-with-ssh/
 pass: maker
 
 ### Forward to UART
-3020 is listening on TCP port 2000 and forwards data to UART
+3020 is listening on TCP port 2000 and forwards data to UART  
 Following line will redirect command to UART using CLI over the network
 ```
 sudo echo 'any command' | nc <3020 ip address> 2000
+```
 
-
-
-
-
+### Forward to ev3dev
+ev3dev is listening on port 8080  
+3020 is listening on port 88 and redirects to ev3dev:8080
+```
+sudo echo 'any command' | nc <3020 ip address> 88
+```

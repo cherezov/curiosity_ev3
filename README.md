@@ -91,3 +91,10 @@ ev3dev is listening on port 8080
 ```
 sudo echo 'any command' | nc <3020 ip address> 88
 ```
+
+### Auto start ev3dev serv
+Add to /etc/rc.local
+```
+python3.4 /usr/local/bin/ev3server.daemon.py start
+```
+

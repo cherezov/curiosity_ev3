@@ -8,7 +8,6 @@ class Daemon:
 
    def __init__(self, pidfile):
       self.pidfile = pidfile
-      self.running = False
    
    def daemonize(self):
       """Deamonize class. UNIX double fork mechanism."""

@@ -1,10 +1,12 @@
 # @file ev3server.py
 # @author Pavel Cherezov (cherezov.pavel@gmail.com)
 
+import time
 import socket
 import select
+from subprocess import call
 
-__version__ = '0.1'
+__version__ = '0.7'
 
 class ev3devEmulator:
    def __init__(self):
@@ -48,8 +50,6 @@ class EV3Server:
          print(msg)
 
    def start(self):
-      print('start')
-
       self.__log('== EV3 Server ==')
       self.__log('* starting server {}:{}'.format(self.host, self.port))
       try:
@@ -58,6 +58,15 @@ class EV3Server:
          self.__socket.listen(1)
          self.__started = True
          self.__log('* started')
+
+         
+         for i in range(10):
+            ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.RED)
+            ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.RED)
+            time.sleep(0.5)
+            ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.GREEN)
+            ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.GREEN)
+            time.sleep(0.2)
       except Exception as e:
          self.__log('* failed to start: {}'.format(e))
 
@@ -70,6 +79,42 @@ class EV3Server:
          ev3.Sound.speak(value).wait()
       elif cmd == 'test':
          self.__log('* test "{}"'.format(value))
+      elif cmd == 'led':
+         if value == 'green':
+            ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.GREEN)
+            ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.GREEN)
+         elif value == 'red':
+            ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.RED)
+            ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.RED)
+         elif value == 'orange':
+            ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.ORANGE)
+            ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.ORANGE)
+         elif value == 'yellow':
+            ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.YELLOW)
+            ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.YELLOW)
+      elif cmd == 'restart':
+         self.__log('* restarting..')
+
+         ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.YELLOW)
+         ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.YELLOW)
+
+         call(['python3.4', '/usr/local/bin/ev3server.daemon.py', 'restart'])
+      elif cmd == 'update':
+         self.__log('* updating..')
+
+         ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.GREEN)
+         ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.GREEN)
+
+         ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.ORANGE)
+         ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.ORANGE)
+
+         call(['scp', 'root@wrt:ev3server.update/ev3server.daemon.py', '/usr/local/bin'])
+         call(['scp', 'root@wrt:ev3server.update/ev3server.py', '/usr/local/bin'])
+         call(['scp', 'root@wrt:ev3server.update/daemon.py', '/usr/local/bin'])
+         call(['scp', 'root@wrt:ev3server.update/ev3server.cfg', '/usr/local/etc'])
+
+         ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.GREEN)
+         ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.GREEN)
       elif cmd == 'xy':
          x, y = value.split(';')
          x = float(x)
@@ -97,7 +142,8 @@ class EV3Server:
             if self.__peer_sock in r:
                datas = self.__peer_sock.recv(128).decode().strip()
                if not datas:
-                  continue
+                  self.__log('* Connection closed')
+                  break;
 
                for data in datas.split('|'):
                   data = data.strip()
@@ -116,6 +162,9 @@ class EV3Server:
                         print('Handle exception: {}'.format(e))
             elif self.__peer_sock in w:
                self.reply()
+            elif self.__peer_sock in x:
+               self.__log('* Connection closed')
+               break
 
          self.__peer_sock = None
          self.__peer_addr = None
@@ -132,9 +181,11 @@ class EV3Server:
 
 def run():
    import configparser
+   import os
 
+   print('cwd = {}\n'.format(os.getcwd()))
    config = configparser.ConfigParser()
-   config.read('/home/pavel/git/legowrt/src/ev3server/ev3server.cfg')
+   config.read('/usr/local/etc/ev3server.cfg')
 
    srvCfg = config['server']
    port = int(srvCfg['port'])

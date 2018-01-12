@@ -8,9 +8,7 @@ import ev3server
 if __name__ == "__main__":
    class Ev3ServerDaemon(Daemon):
       def run(self):
-         self.running = True
          ev3server.run()
-         self.running = False
 
       def status(self):
          try:
@@ -19,8 +17,9 @@ if __name__ == "__main__":
          except IOError:
             pid = None
 
-         print('State:\t', 'Running' if self.running else 'Stopped')
+         print('State:\t', 'Running' if pid is not None else 'Stopped')
          if pid is not None:
+            print('PID file:\t', self.pidfile)
             print('PID:\t', pid)
             print('Version:', ev3server.__version__)
 

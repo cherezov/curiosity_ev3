@@ -1,3 +1,4 @@
+#!/usr/bin/python3.4
 # @file ev3server.py
 # @author Pavel Cherezov (cherezov.pavel@gmail.com)
 
@@ -99,6 +100,13 @@ class EV3Server:
          ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.YELLOW)
 
          call(['python3.4', '/usr/local/bin/ev3server.daemon.py', 'restart'])
+      elif cmd == 'shutdown':
+         self.__log('* shutting down..')
+
+         ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.RED)
+         ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.RED)
+
+         call(['shutdown', '-h', 'now'])
       elif cmd == 'update':
          self.__log('* updating..')
 

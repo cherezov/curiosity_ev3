@@ -1,28 +1,29 @@
-# Curiosity EV3
+# Curiosity Mars LegoEV3 Rover
 This project was made for my son, who asked me to make possible wireless control his Lego Mindstorm EV3 robot from PC.
 Below is the log of what was done, what is needed to be done and several notes and instructions.
 
 ## General idea
 ![legowrt idea](images/legowrt.jpg)
 
-## Requirements from my boy :octocat:
-* Robot shall has a camera eye and image shall be visible on laptop
-* Robot shall be controlled via joystick connected to laptop
-* Notebook and robot shall communicate wirelessly (e.g via wifi)
+## Requirements
+* Rover shall has a camera eye and image shall be visible on laptop
+* Rover shall be controlled via joystick connected to a laptop
+* Rover shall be controlled via laptop keyboard
+* Notebook and rover shall communicate wirelessly (e.g via wifi)
 
-## Hardware we will work with
+## Hardware
 * WiFi router and PC or laptop (my with CentOS 7)
 * [Lego Mindstorms](https://www.lego.com/mindstorms/)
 * Micro SDHC card with [ev3dev image](http://www.ev3dev.org/docs/getting-started/)
 * [TP-Link TL-MR3020 router with OpenWRT onboard](https://wiki.openwrt.org/toh/tp-link/tl-mr3020)
-* OpenWrt supported webcam, e.g [Logitech HD Webcam C270](http://www.logitech.com/en-us/product/hd-webcam-c270)
+* UVC webcam ([check list here](http://www.ideasonboard.org/uvc/))
+* Arduino UNO board
+* Servos
 * Joystick 
 * USB hub
 * USB-miniUSB cord
 
 ## Plan and progress and thoughts
-- [x] Setup OpenWRT to [TP-Link TL-MR3020](https://wiki.openwrt.org/toh/tp-link/tl-mr3020)
-- [x] Setup [ev3dev](http://www.ev3dev.org/docs/getting-started/) for Lego EV3 Brick
 - [ ] ~Connect Lego EV3 Brick to wifi network~ **Note:** this requires WiFi dongle and will occupy single USB port
 - [x] Connect MR3020 board to EV3 Brick with [USB reverse tethering](#USB-reverse-tethering)
 - [x] Setup [port forwarding from MR3020 to EV3](#Port-forwarding-from-MR3020-to-EV3) Brick
@@ -33,8 +34,13 @@ Below is the log of what was done, what is needed to be done and several notes a
 - [x] Develop python3 listenening server for EV3 Brick
 - [x] Code [client side application](src/client)
 - [x] Add auto configuration usb0 interface on MR3020 board [configure DHCP?](http://en.qi-hardware.com/wiki/Ethernet_over_USB#Editing-the-Host's-Network-Configuration)
-- [ ] Run server app as daemon at runtime
+- [x] Run server app as daemon at runtime
 - [ ] Inernet access for MR3020 brick and/or auto update listening server
+
+## Installation
+* Setup OpenWRT to [TP-Link TL-MR3020](https://wiki.openwrt.org/toh/tp-link/tl-mr3020)
+* Setup [ev3dev](http://www.ev3dev.org/docs/getting-started/) for Lego EV3 Brick
+* todo..
 
 ## Configuration notes
 ### USB reverse tethering

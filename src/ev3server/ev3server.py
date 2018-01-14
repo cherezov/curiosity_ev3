@@ -7,7 +7,7 @@ import socket
 import select
 from subprocess import call
 
-__version__ = '0.7'
+__version__ = '0.8'
 
 class ev3devEmulator:
    def __init__(self):
@@ -43,8 +43,8 @@ class EV3Server:
       self.__peer_sock = None
       self.__peer_addr = None
 
-      self.__leftMotor = ev3.LargeMotor('outB')
-      self.__rightMotor = ev3.LargeMotor('outC')
+      self.__leftMotor = ev3.LargeMotor('outD')
+      self.__rightMotor = ev3.LargeMotor('outA')
 
    def __log(self, msg):
       if not self.quite:
@@ -78,8 +78,6 @@ class EV3Server:
       if cmd == 'speak':
          self.__log('* Speaking "{}"'.format(value))
          ev3.Sound.speak(value).wait()
-      elif cmd == 'test':
-         self.__log('* test "{}"'.format(value))
       elif cmd == 'led':
          if value == 'green':
             ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.GREEN)
@@ -100,13 +98,6 @@ class EV3Server:
          ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.YELLOW)
 
          call(['python3.4', '/usr/local/bin/ev3server.daemon.py', 'restart'])
-      elif cmd == 'shutdown':
-         self.__log('* shutting down..')
-
-         ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.RED)
-         ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.RED)
-
-         call(['shutdown', '-h', 'now'])
       elif cmd == 'update':
          self.__log('* updating..')
 
@@ -123,6 +114,13 @@ class EV3Server:
 
          ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.GREEN)
          ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.GREEN)
+      elif cmd == 'shutdown':
+         self.__log('* shutting down..')
+
+         ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.RED)
+         ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.RED)
+
+         call(['shutdown', '-h', 'now'])
       elif cmd == 'xy':
          x, y = value.split(';')
          x = float(x)
@@ -130,6 +128,14 @@ class EV3Server:
          self.__leftMotor.speed_sp = self.__leftMotor.max_speed / 10 * x
          self.__leftMotor.run_forever()
          self.__rightMotor.speed_sp = self.__rightMotor.max_speed / 10 * y
+         self.__rightMotor.run_forever()
+      elif cmd == 'drive':
+         left, right = value.split(';')
+         left = -float(left)
+         right = -float(right)
+         self.__leftMotor.speed_sp = self.__leftMotor.max_speed / 10 * left
+         self.__leftMotor.run_forever()
+         self.__rightMotor.speed_sp = self.__rightMotor.max_speed / 10 * right
          self.__rightMotor.run_forever()
       elif cmd == 'motorA':
          self.__log('* motorA={}'.format(value))
@@ -163,8 +169,8 @@ class EV3Server:
                   self.__log('* Received: "{}"'.format(data))
 
                   if ':' in data:
-                     cmd, value = data.split(':')
                      try:
+                        cmd, value = data.split(':')
                         self.handle(cmd.strip(), value.strip())
                      except Exception as e:
                         print('Handle exception: {}'.format(e))

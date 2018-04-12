@@ -66,6 +66,10 @@ to /etc/dropbear/authorized_keys
 ### Port forwarding from MR3020 to EV3
 Port forwarding is described in ```/etc/config/rinetd``` 
 
+```
+> ifconfig usb0 169.254.233.100
+```
+
 Restart **rinetd**
 ```
 > /etc/init.d/rinetd restart

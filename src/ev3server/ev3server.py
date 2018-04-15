@@ -5,6 +5,8 @@
 import time
 import socket
 import select
+import threading
+import queue
 from subprocess import call
 
 __version__ = '0.8'
@@ -45,6 +47,16 @@ class EV3Server:
 
       self.__leftMotor = ev3.LargeMotor('outD')
       self.__rightMotor = ev3.LargeMotor('outA')
+      self.__smallMotor = ev3.MediumMotor('outC')
+      self.__ir = ev3.InfraredSensor()
+      self.__power = ev3.PowerSupply()
+
+      self.__last_ping = 0
+      self.__last_ir = 0
+      self.__last_pwr = 0
+
+      self.__gear = 1
+
 
    def __log(self, msg):
       if not self.quite:
@@ -60,7 +72,6 @@ class EV3Server:
          self.__started = True
          self.__log('* started')
 
-         
          for i in range(10):
             ev3.Leds.set_color(ev3.Leds.LEFT, ev3.Leds.RED)
             ev3.Leds.set_color(ev3.Leds.RIGHT, ev3.Leds.RED)
@@ -72,8 +83,21 @@ class EV3Server:
          self.__log('* failed to start: {}'.format(e))
 
    def reply(self):
-      pass
+      try:
+         if time.time() - self.__last_ping > 1.5: 
+            self.__peer_sock.sendall('ping:ok;'.encode()) 
+            self.__last_ping = time.time() 
+    
+         if time.time() - self.__last_pwr > 2: 
+            self.__peer_sock.sendall('power:{};'.format(self.__power.measured_volts).encode()) 
+            self.__last_pwr = time.time() 
 
+         if time.time() - self.__last_ir > 1: 
+            self.__peer_sock.sendall('ir:{};'.format(self.__ir.value()).encode()) 
+            self.__last_ir = time.time() 
+      except:
+         pass
+ 
    def handle(self, cmd, value):
       if cmd == 'speak':
          self.__log('* Speaking "{}"'.format(value))
@@ -122,20 +146,33 @@ class EV3Server:
 
          call(['shutdown', '-h', 'now'])
       elif cmd == 'xy':
-         x, y = value.split(';')
+         x, y = value.split(',')
          x = float(x)
          y = float(y)
-         self.__leftMotor.speed_sp = self.__leftMotor.max_speed / 10 * x
+         self.__leftMotor.speed_sp = self.__leftMotor.max_speed / self.__gear * x
          self.__leftMotor.run_forever()
-         self.__rightMotor.speed_sp = self.__rightMotor.max_speed / 10 * y
+         self.__rightMotor.speed_sp = self.__rightMotor.max_speed / self.__gear * y
          self.__rightMotor.run_forever()
+      elif cmd == 'arm':
+         value = float(value)
+         direction = 1 if value > 0 else -1
+         self.__log('* arm {}..'.format('open' if direction == 1 else 'close'))
+         self.__smallMotor.run_timed(time_sp=abs(value), speed_sp=direction * 360)
+      elif cmd == 'gear':
+         self.__gear = int(value)
+      elif cmd == 'arm_open':
+         self.__log('* arm open..')
+         self.__smallMotor.run_timed(time_sp=1000, speed_sp=360)
+      elif cmd == 'arm_close':
+         self.__log('* arm close..')
+         self.__smallMotor.run_timed(time_sp=1000, speed_sp=-360)
       elif cmd == 'drive':
-         left, right = value.split(';')
+         left, right = value.split(',')
          left = -float(left)
          right = -float(right)
-         self.__leftMotor.speed_sp = self.__leftMotor.max_speed / 10 * left
+         self.__leftMotor.speed_sp = self.__leftMotor.max_speed / self.__gear * left
          self.__leftMotor.run_forever()
-         self.__rightMotor.speed_sp = self.__rightMotor.max_speed / 10 * right
+         self.__rightMotor.speed_sp = self.__rightMotor.max_speed / self.__gear * right
          self.__rightMotor.run_forever()
       elif cmd == 'motorA':
          self.__log('* motorA={}'.format(value))
@@ -150,16 +187,19 @@ class EV3Server:
       while self.__started:
          self.__log('* waiting for peer...')
          self.__peer_sock, self.__peer_addr = self.__socket.accept()
+         self.__peer_sock.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
          self.__log('* peer connected {}'.format(self.__peer_addr))
          while self.__started:
+            self.reply()
+
             r, w, x = select.select([self.__peer_sock], [self.__peer_sock], [], 1)
             if self.__peer_sock in r:
                datas = self.__peer_sock.recv(128).decode().strip()
                if not datas:
                   self.__log('* Connection closed')
-                  break;
+                  break
 
-               for data in datas.split('|'):
+               for data in datas.split(';'):
                   data = data.strip()
                   if data.lower() == 'quit':
                      self.__log('* peer is going to disconnect')
@@ -174,9 +214,8 @@ class EV3Server:
                         self.handle(cmd.strip(), value.strip())
                      except Exception as e:
                         print('Handle exception: {}'.format(e))
-            elif self.__peer_sock in w:
-               self.reply()
-            elif self.__peer_sock in x:
+
+            if self.__peer_sock in x:
                self.__log('* Connection closed')
                break
 
@@ -211,8 +250,8 @@ def run():
       server.accept()
    except KeyboardInterrupt:
       pass
-   except Exception:
-      print('Exception')
+   except Exception as e:
+      print('Exception:', e)
    finally:
       server.stop()
 
